@@ -25,5 +25,6 @@ dist-ssr
 
 # Project files and directories
 .env
+jest.setup.js
 docs
 public/img/*

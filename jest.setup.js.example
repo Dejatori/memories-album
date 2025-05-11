@@ -1,0 +1,4 @@
+process.env.JWT_SECRET = 'your_jwt_secret';
+process.env.JWT_EXPIRATION = '1h';
+process.env.MONGO_URI_TEST = 'mongodb://localhost:27017/memories-album-test';
+process.env.FRONTEND_URL = 'http://localhost:5173';

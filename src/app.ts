@@ -1,5 +1,10 @@
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
+import authRoutes from './api/routes/auth.routes';
+import userRoutes from './api/routes/user.routes';
+import albumRoutes from './api/routes/album.routes';
+import mediaItemRoutes from './api/routes/mediaItem.routes';
+import { errorHandler } from './api/middlewares/error.middleware';
 
 // Create Express application
 const app: Express = express();
@@ -27,9 +32,11 @@ app.get('/api/health', (_req: Request, res: Response) => {
   });
 });
 
-// TODO: Add API routes here
-// Example: app.use('/api/auth', authRoutes);
-// Example: app.use('/api/albums', albumRoutes);
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/albums', albumRoutes);
+app.use('/api/media', mediaItemRoutes);
 
 // Handle 404 - Route not found
 app.use((_req: Request, res: Response) => {
@@ -38,5 +45,8 @@ app.use((_req: Request, res: Response) => {
     message: 'Route not found'
   });
 });
+
+// Global error handler
+app.use(errorHandler);
 
 export default app;
