@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { getMe } from '../controllers/auth.controller';
-import { protect } from '../middlewares/auth.middleware';
+import { protect, requireAuth } from '../middlewares/auth.middleware';
 
 // Create router
 const router = Router();
@@ -10,6 +10,6 @@ const router = Router();
  * @desc Get current user profile
  * @access Private
  */
-router.get('/me', protect, getMe);
+router.get('/me', protect, requireAuth, getMe);
 
 export default router;

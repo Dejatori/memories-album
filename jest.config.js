@@ -20,6 +20,5 @@ export default {
   clearMocks: true,
   resetMocks: true,
   restoreMocks: true,
-  testTimeout: 10000,
-  setupFilesAfterEnv: ['./jest.setup.js']
+  testTimeout: 10000
 };

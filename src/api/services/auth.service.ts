@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import createHttpError from 'http-errors';
 import User from '../models/User.model';
 import { RegisterInput, LoginInput } from '../validators/auth.validator';
+import { config } from '../../config/env_conf';
 
 /**
  * Interface for JWT payload
@@ -14,32 +15,32 @@ export interface JwtPayload {
 /**
  * Generates a JWT token for a user
  * @param userId - The ID of the user
- * @returns A JWT token
+ * @returns A JWT token.
  */
 export const generateToken = (userId: string): string => {
-  const jwtSecret = process.env.JWT_SECRET;
+  const jwtSecret = config.JWT_SECRET;
   
   if (!jwtSecret) {
     throw new Error('JWT_SECRET is not defined in environment variables');
   }
   
-  // Create token with user ID in payload
+  // Create a token with user ID in payload
   return jwt.sign(
     { userId } as JwtPayload,
     jwtSecret,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
+    { expiresIn: config.JWT_EXPIRES_IN || '1d' }
   );
 };
 
 /**
  * Registers a new user
  * @param userData - User registration data
- * @returns The created user (without password) and a JWT token
+ * @returns The created user (without a password) and a JWT token.
  */
 export const registerUser = async (userData: RegisterInput) => {
   const { username, email, password } = userData;
   
-  // Check if user with email or username already exists
+  // Check if a user with email or username already exists
   const existingUser = await User.findOne({
     $or: [{ email }, { username }]
   });
@@ -57,7 +58,7 @@ export const registerUser = async (userData: RegisterInput) => {
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
   
-  // Create new user
+  // Create a new user
   const user = await User.create({
     username,
     email,
@@ -68,7 +69,7 @@ export const registerUser = async (userData: RegisterInput) => {
   // Generate JWT token
   const token = generateToken(user._id.toString());
   
-  // Return user data (without password) and token
+  // Return user data (without a password) and token
   const userResponse = {
     _id: user._id,
     username: user.username,
@@ -83,12 +84,12 @@ export const registerUser = async (userData: RegisterInput) => {
 /**
  * Authenticates a user
  * @param loginData - User login data
- * @returns The authenticated user (without password) and a JWT token
+ * @returns The authenticated user (without a password) and a JWT token.
  */
 export const loginUser = async (loginData: LoginInput) => {
   const { email, password } = loginData;
   
-  // Find user by email
+  // Find the user by email
   const user = await User.findOne({ email });
   
   if (!user) {
@@ -105,7 +106,7 @@ export const loginUser = async (loginData: LoginInput) => {
   // Generate JWT token
   const token = generateToken(user._id.toString());
   
-  // Return user data (without password) and token
+  // Return user data (without a password) and token
   const userResponse = {
     _id: user._id,
     username: user.username,

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { protect } from '../middlewares/auth.middleware';
+import { protect, requireAuth } from '../middlewares/auth.middleware';
 import {
   createAlbum,
   getAlbums,
@@ -15,6 +15,7 @@ const router = Router();
 
 // Protect all routes
 router.use(protect);
+router.use(requireAuth);
 
 /**
  * @route POST /api/albums

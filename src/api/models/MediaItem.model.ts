@@ -18,7 +18,7 @@ export interface IMediaItem extends Document {
 
 /**
  * Mongoose schema for MediaItem
- * Defines fields, validations, and relationships
+ * Defines fields, validations and relationships
  */
 const mediaItemSchema = new Schema<IMediaItem>(
   {

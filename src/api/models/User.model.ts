@@ -14,7 +14,7 @@ export interface IUser extends Document {
 
 /**
  * Mongoose schema for User
- * Defines fields, validations, and relationships
+ * Defines fields, validations and relationships
  */
 const userSchema = new Schema<IUser>({
   // Username: required, unique, trimmed
@@ -43,16 +43,16 @@ const userSchema = new Schema<IUser>({
   password: {
     type: String,
     required: [true, 'Password is required'],
-    // Note: Password hashing should be handled in a pre-save hook or service
+    // Note: Password hashing should be handled in a pre-save hook or service.
   },
   
   // Profile picture URL: optional
   profilePictureUrl: {
     type: String,
-    // Optional field, no required validation
+    // An optional field, no required validation
   },
   
-  // Albums: array of references to Album model
+  // Albums: array of references to an Album model
   albums: [{
     type: Schema.Types.ObjectId,
     ref: 'Album',

@@ -1,25 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import createHttpError from 'http-errors';
-import User, { IUser } from '../models/User.model';
+import User, {IUser} from '../models/User.model';
 import { JwtPayload } from '../services/auth.service';
-
-// Define a type for the user object without the password
-export type UserWithoutPassword = Omit<IUser, 'password'>;
-
-// Extend Express Request type to include user property
-// Using module augmentation instead of namespace declaration
-declare module 'express' {
-  interface Request {
-    user?: UserWithoutPassword; // Will be populated with user data by the middleware
-  }
-}
+import { config } from '../../config/env_conf';
+import { isJwtError } from '../../types/errors';
 
 /**
  * Middleware to protect routes that require authentication
- * Verifies the JWT token and attaches the user to the request object
+ * Verifies the JWT token and attaches the user to the request object.
  */
-export const protect = async (req: Request, res: Response, next: NextFunction) => {
+export const protect = async (req: Request, _res: Response, next: NextFunction) => {
   try {
     // Get token from Authorization header
     let token: string | undefined;
@@ -35,14 +26,14 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
     }
 
     // Verify token
-    const jwtSecret = process.env.JWT_SECRET;
+    const jwtSecret = config.JWT_SECRET;
 
     if (!jwtSecret) {
       throw new Error('JWT_SECRET is not defined in environment variables');
     }
 
     // Decode token to get user ID
-    const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
+    const decoded = await jwt.verify(token, jwtSecret) as JwtPayload;
 
     // Find user by ID
     const user = await User.findById(decoded.userId).select('-password');
@@ -51,20 +42,35 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
       return next(createHttpError(401, 'Not authorized, user not found'));
     }
 
-    // Attach user to request object
-    req.user = user;
+    // Attach a user to request an object
+    req.user = user as IUser;
 
     // Proceed to the protected route
     next();
-  } catch (error) {
-    if (error.name === 'JsonWebTokenError') {
-      return next(createHttpError(401, 'Not authorized, invalid token'));
+  } catch (err) {
+    if (isJwtError(err)) {
+        if (err.name === 'JsonWebTokenError') {
+            return next(createHttpError(401, 'Not authorized, invalid token'));
+        }
+        if (err.name === 'TokenExpiredError') {
+            return next(createHttpError(401, 'Not authorized, token expired'));
+        }
+        if (err.name === 'NotBeforeError') {
+            return next(createHttpError(401, 'Not authorized, token not active'));
+        }
     }
 
-    if (error.name === 'TokenExpiredError') {
-      return next(createHttpError(401, 'Not authorized, token expired'));
-    }
-
-    next(error);
+    next(err);
   }
+};
+
+/**
+ * Middleware que verífica si el usuario está autenticado y tiene un _id válido
+ * Se usa después del middleware protect para rutas que requieren autenticación
+ */
+export const requireAuth = (req: Request, _res: Response, next: NextFunction) => {
+  if (!req.user?._id) {
+    return next(createHttpError(401, 'User not authenticated'));
+  }
+  next();
 };

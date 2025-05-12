@@ -3,16 +3,17 @@ import Album, { IAlbum } from '../models/Album.model';
 import MediaItem from '../models/MediaItem.model';
 import { CreateAlbumInput, UpdateAlbumInput } from '../validators/album.validator';
 import mongoose from 'mongoose';
+import { handleServiceError } from '../utils/serviceErrorHandler';
 
 /**
  * Creates a new album
  * @param albumData - Album data from request body
  * @param userId - ID of the user creating the album
- * @returns The created album
+ * @returns The created album.
  */
 export const createAlbum = async (albumData: CreateAlbumInput, userId: string): Promise<IAlbum> => {
   try {
-    // Create new album with owner set to the authenticated user
+    // Create a new album with an owner set to the authenticated user.
     const album = await Album.create({
       ...albumData,
       owner: userId,
@@ -20,12 +21,9 @@ export const createAlbum = async (albumData: CreateAlbumInput, userId: string): 
     });
 
     return album;
-  } catch (error) {
-    // Handle potential errors
-    if (error instanceof mongoose.Error.ValidationError) {
-      throw createHttpError(400, 'Invalid album data');
-    }
-    throw error;
+  } catch (err) {
+    handleServiceError(err, 'createAlbum');
+    throw err;
   }
 };
 
@@ -33,16 +31,16 @@ export const createAlbum = async (albumData: CreateAlbumInput, userId: string): 
  * Gets all albums that the user has access to
  * This includes albums owned by the user and public albums
  * @param userId - ID of the authenticated user
- * @returns Array of albums
+ * @returns Array of albums.
  */
 export const getAlbums = async (userId: string): Promise<IAlbum[]> => {
-  // Find albums that are either owned by the user or are public
+  // Find albums that are either owned by the user or are public.
   const albums = await Album.find({
     $or: [
       { owner: userId },
       { isPublic: true }
     ]
-  }).sort({ createdAt: -1 }); // Sort by creation date, newest first
+  }).sort({ createdAt: -1 }); // Sort by creation date, the newest first
 
   return albums;
 };
@@ -52,37 +50,34 @@ export const getAlbums = async (userId: string): Promise<IAlbum[]> => {
  * Ensures the user has access to the album (owner or public)
  * @param albumId - ID of the album to retrieve
  * @param userId - ID of the authenticated user
- * @returns The album if found and accessible
+ * @returns The album if found and accessible.
  */
 export const getAlbumById = async (albumId: string, userId: string): Promise<IAlbum> => {
   try {
-    // Find album by ID
+    // Find an album by ID
     const album = await Album.findById(albumId);
 
-    // Check if album exists
+    // Check if the album exists
     if (!album) {
       throw createHttpError(404, 'Album not found');
     }
 
-    // Check if user has access to the album
+    // Check if the user has access to the album
     if (!album.isPublic && album.owner.toString() !== userId) {
       throw createHttpError(403, 'You do not have permission to access this album');
     }
 
     return album;
-  } catch (error) {
-    // Handle potential errors
-    if (error instanceof mongoose.Error.CastError) {
-      throw createHttpError(400, 'Invalid album ID');
-    }
-    throw error;
+  } catch (err) {
+    handleServiceError(err, 'getAlbumById');
+    throw err;
   }
 };
 
 /**
  * Gets all albums owned by the authenticated user
  * @param userId - ID of the authenticated user
- * @returns Array of albums owned by the user
+ * @returns Array of albums owned by the user.
  */
 export const getMyAlbums = async (userId: string): Promise<IAlbum[]> => {
   // Find albums owned by the user
@@ -97,7 +92,7 @@ export const getMyAlbums = async (userId: string): Promise<IAlbum[]> => {
  * @param albumId - ID of the album to update
  * @param updateData - Album data to update
  * @param userId - ID of the authenticated user
- * @returns The updated album
+ * @returns The updated album.
  */
 export const updateAlbum = async (
   albumId: string,
@@ -105,15 +100,15 @@ export const updateAlbum = async (
   userId: string
 ): Promise<IAlbum> => {
   try {
-    // Find album by ID
+    // Find an album by ID
     const album = await Album.findById(albumId);
 
-    // Check if album exists
+    // Check if the album exists
     if (!album) {
       throw createHttpError(404, 'Album not found');
     }
 
-    // Check if user is the owner of the album
+    // Check if the user is the owner of the album
     if (album.owner.toString() !== userId) {
       throw createHttpError(403, 'You do not have permission to update this album');
     }
@@ -123,15 +118,9 @@ export const updateAlbum = async (
     await album.save();
 
     return album;
-  } catch (error) {
-    // Handle potential errors
-    if (error instanceof mongoose.Error.CastError) {
-      throw createHttpError(400, 'Invalid album ID');
-    }
-    if (error instanceof mongoose.Error.ValidationError) {
-      throw createHttpError(400, 'Invalid album data');
-    }
-    throw error;
+  } catch (err) {
+    handleServiceError(err, 'updateAlbum');
+    throw err;
   }
 };
 
@@ -141,19 +130,19 @@ export const updateAlbum = async (
  * Also deletes all media items associated with the album
  * @param albumId - ID of the album to delete
  * @param userId - ID of the authenticated user
- * @returns Success message
+ * @returns Success message.
  */
 export const deleteAlbum = async (albumId: string, userId: string): Promise<{ message: string }> => {
   try {
-    // Find album by ID
+    // Find an album by ID
     const album = await Album.findById(albumId);
 
-    // Check if album exists
+    // Check if the album exists
     if (!album) {
       throw createHttpError(404, 'Album not found');
     }
 
-    // Check if user is the owner of the album
+    // Check if the user is the owner of the album
     if (album.owner.toString() !== userId) {
       throw createHttpError(403, 'You do not have permission to delete this album');
     }
@@ -180,11 +169,8 @@ export const deleteAlbum = async (albumId: string, userId: string): Promise<{ me
       session.endSession();
       throw error;
     }
-  } catch (error) {
-    // Handle potential errors
-    if (error instanceof mongoose.Error.CastError) {
-      throw createHttpError(400, 'Invalid album ID');
-    }
-    throw error;
+  } catch (err) {
+    handleServiceError(err, 'deleteAlbum');
+    throw err;
   }
 };

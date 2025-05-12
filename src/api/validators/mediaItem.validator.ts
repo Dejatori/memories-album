@@ -2,14 +2,14 @@ import { z } from 'zod';
 
 /**
  * Zod schema for creating a new media item
- * Note: This is used for validation after the file has been uploaded to Cloudinary
+ * Note: This is used for validation after the file has been uploaded to Cloudinary.
  */
 export const createMediaItemSchema = z.object({
   type: z
     .enum(['image', 'video'], {
-      errorMap: () => ({ message: 'Type must be either image or video' }),
+      errorMap: () => ({ message: 'Only image and video files are allowed' }),
     }),
-  
+
   cloudinaryPublicId: z
     .string()
     .min(1, 'Cloudinary public ID is required'),

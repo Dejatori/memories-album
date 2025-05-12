@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { registerSchema, loginSchema } from '../validators/auth.validator';
 import { registerUser, loginUser } from '../services/auth.service';
 import createHttpError from 'http-errors';
+import { isZodError } from "../../types/errors";
 
 /**
  * Handles user registration
@@ -24,17 +25,17 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
         token
       }
     });
-  } catch (error) {
+  } catch (err) {
     // If it's a Zod validation error, format it nicely
-    if (error.name === 'ZodError') {
+    if (isZodError(err)) {
       return next(createHttpError(400, {
         message: 'Validation error',
-        errors: error.errors
+        errors: err.errors
       }));
     }
     
     // Pass other errors to the error handler middleware
-    next(error);
+    next(err);
   }
 };
 
@@ -45,7 +46,7 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
  */
 export const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Validate request body against the login schema
+    // Validate the request body against the login schema
     const validatedData = loginSchema.parse(req.body);
     
     // Authenticate the user using the auth service
@@ -59,27 +60,27 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
         token
       }
     });
-  } catch (error) {
+  } catch (err) {
     // If it's a Zod validation error, format it nicely
-    if (error.name === 'ZodError') {
+    if (isZodError(err)) {
       return next(createHttpError(400, {
         message: 'Validation error',
-        errors: error.errors
+        errors: err.errors
       }));
     }
     
     // Pass other errors to the error handler middleware
-    next(error);
+    next(err);
   }
 };
 
 /**
- * Gets the current user's profile
+ * Gets the current users' profile
  * @route GET /api/users/me
  * @access Private
  */
 export const getMe = async (req: Request, res: Response) => {
-  // The user is already attached to the request by the auth middleware
+  // The user is already attached to the request by the auth middleware.
   res.status(200).json({
     status: 'success',
     data: {

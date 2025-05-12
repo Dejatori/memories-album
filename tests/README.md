@@ -32,17 +32,17 @@ The tests cover the following functionality:
 Create a `jset.setup.js` file in the root directory with the following variables:
 
 ```
-process.env.JWT_SECRET = 'your_jwt_secret';
-process.env.JWT_EXPIRATION = '1h';
-process.env.MONGO_URI_TEST = process.env.MONGO_URI_TEST || 'mongodb://localhost:27017/memories-album-test';
-process.env.FRONTEND_URL = 'http://localhost:5173';
+config.JWT_SECRET = 'your_jwt_secret';
+config.JWT_EXPIRATION = '1h';
+config.DATABASE_URL = config.DATABASE_URL || 'mongodb://localhost:27017/memories-album-test';
+config.FRONTEND_URL = 'http://localhost:5173';
 ```
 
 Alternatively, you can set these environment variables directly in your test environment.
 
 ### MongoDB
 
-Make sure you have MongoDB running locally, or update the `MONGO_URI_TEST` to point to your test database.
+Make sure you have MongoDB running locally, or update the `DATABASE_URL` to point to your test database.
 
 ## Running the Tests
 

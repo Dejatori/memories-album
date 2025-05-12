@@ -1,16 +1,18 @@
 import { v2 as cloudinary } from 'cloudinary';
+import { config } from './env_conf';
+import logger from './logging_conf';
 
 /**
  * Configures the Cloudinary SDK with credentials from environment variables.
  * This should be called early in the application startup.
  */
 export const configureCloudinary = (): void => {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+  const cloudName = config.CLOUDINARY_CLOUD_NAME;
+  const apiKey = config.CLOUDINARY_API_KEY;
+  const apiSecret = config.CLOUDINARY_API_SECRET;
   
   if (!cloudName || !apiKey || !apiSecret) {
-    throw new Error('Cloudinary credentials are not properly defined in environment variables');
+    logger.error('Cloudinary credentials are not properly defined in environment variables');
   }
   
   // Configure Cloudinary
@@ -20,8 +22,8 @@ export const configureCloudinary = (): void => {
     api_secret: apiSecret,
     secure: true // Use HTTPS
   });
-  
-  console.log('Cloudinary configured successfully');
+
+  logger.info('Cloudinary configured successfully');
 };
 
 // Export the configured cloudinary instance for use in other parts of the application

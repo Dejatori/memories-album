@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 /**
  * Zod schema for user registration
- * Validates username, email, and password
+ * Validates username, email and password
  */
 export const registerSchema = z.object({
   username: z

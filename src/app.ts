@@ -5,12 +5,14 @@ import userRoutes from './api/routes/user.routes';
 import albumRoutes from './api/routes/album.routes';
 import mediaItemRoutes from './api/routes/mediaItem.routes';
 import { errorHandler } from './api/middlewares/error.middleware';
+import { config } from './config/env_conf';
+import './types/express.d';
 
-// Create Express application
+// Create an Express application
 const app: Express = express();
 
 // Get frontend URL from environment variables for CORS
-const frontendURL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const frontendURL = config.FRONTEND_URL || 'http://localhost:5173';
 
 // Configure middleware
 app.use(cors({
@@ -38,7 +40,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/albums', albumRoutes);
 app.use('/api/media', mediaItemRoutes);
 
-// Handle 404 - Route not found
+// Handle 404 — Route not found
 app.use((_req: Request, res: Response) => {
   res.status(404).json({
     status: 'error',

@@ -4,15 +4,16 @@ import jwt from 'jsonwebtoken';
 import app from '../src/app';
 import User from '../src/api/models/User.model';
 import { JwtPayload } from '../src/api/services/auth.service';
+import { config } from '../src/config/env_conf';
 
 // Test database connection URI
-const MONGO_URI_TEST = process.env.MONGO_URI_TEST || 'mongodb://localhost:27017/memories-album-test';
+const DATABASE_URL = config.DATABASE_URL || 'mongodb://localhost:27017/memories-album-test';
 
 // Setup and teardown
 beforeAll(async () => {
   try {
     // Connect to test database
-    await mongoose.connect(MONGO_URI_TEST);
+    await mongoose.connect(DATABASE_URL);
     console.log('Connected to test database');
   } catch (error) {
     console.error('Error connecting to test database:', error);
@@ -46,13 +47,13 @@ const createTestUser = async () => {
 
 // Helper function to generate a valid token for a user
 const generateValidToken = (userId: string): string => {
-  const jwtSecret = process.env.JWT_SECRET || 'test-jwt-secret';
+  const jwtSecret = config.JWT_SECRET || 'test-jwt-secret';
   return jwt.sign({ userId } as JwtPayload, jwtSecret, { expiresIn: '1h' });
 };
 
 // Helper function to generate an expired token for a user
 const generateExpiredToken = (userId: string): string => {
-  const jwtSecret = process.env.JWT_SECRET || 'test-jwt-secret';
+  const jwtSecret = config.JWT_SECRET || 'test-jwt-secret';
   return jwt.sign({ userId } as JwtPayload, jwtSecret, { expiresIn: '0s' });
 };
 
@@ -170,7 +171,7 @@ describe('Auth Routes', () => {
       // Create a user first
       await createTestUser();
 
-      // Login with incorrect password
+      // Login with an incorrect password
       const loginData = {
         email: 'test@example.com',
         password: 'wrongpassword'

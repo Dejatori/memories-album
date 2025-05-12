@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { createAlbumSchema, updateAlbumSchema } from '../validators/album.validator';
 import * as albumService from '../services/album.service';
 import createHttpError from 'http-errors';
+import { isZodError } from "../../types/errors";
 
 /**
  * Creates a new album
@@ -10,12 +11,12 @@ import createHttpError from 'http-errors';
  */
 export const createAlbum = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Validate request body against the create album schema
+    // Validate request body against the to create album schema
     const validatedData = createAlbumSchema.parse(req.body);
-    
+
     // Create the album using the album service
     const album = await albumService.createAlbum(validatedData, req.user!._id.toString());
-    
+
     // Return success response with album data
     res.status(201).json({
       status: 'success',
@@ -23,17 +24,17 @@ export const createAlbum = async (req: Request, res: Response, next: NextFunctio
         album
       }
     });
-  } catch (error) {
+  } catch (err: unknown) {
     // If it's a Zod validation error, format it nicely
-    if (error.name === 'ZodError') {
+    if (isZodError(err)) {
       return next(createHttpError(400, {
         message: 'Validation error',
-        errors: error.errors
+        errors: err.errors
       }));
     }
-    
+
     // Pass other errors to the error handler middleware
-    next(error);
+    next(err);
   }
 };
 
@@ -47,8 +48,8 @@ export const getAlbums = async (req: Request, res: Response, next: NextFunction)
   try {
     // Get albums using the album service
     const albums = await albumService.getAlbums(req.user!._id.toString());
-    
-    // Return success response with albums data
+
+    // Return success response with album data
     res.status(200).json({
       status: 'success',
       results: albums.length,
@@ -56,8 +57,8 @@ export const getAlbums = async (req: Request, res: Response, next: NextFunction)
         albums
       }
     });
-  } catch (error) {
-    next(error);
+  } catch (err: unknown) {
+    next(err);
   }
 };
 
@@ -69,9 +70,9 @@ export const getAlbums = async (req: Request, res: Response, next: NextFunction)
  */
 export const getAlbumById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Get album by ID using the album service
+    // Get an album by ID using the album service
     const album = await albumService.getAlbumById(req.params.id, req.user!._id.toString());
-    
+
     // Return success response with album data
     res.status(200).json({
       status: 'success',
@@ -79,8 +80,8 @@ export const getAlbumById = async (req: Request, res: Response, next: NextFuncti
         album
       }
     });
-  } catch (error) {
-    next(error);
+  } catch (err: unknown) {
+    next(err);
   }
 };
 
@@ -91,10 +92,10 @@ export const getAlbumById = async (req: Request, res: Response, next: NextFuncti
  */
 export const getMyAlbums = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Get user's albums using the album service
+    // Get users' albums using the album service
     const albums = await albumService.getMyAlbums(req.user!._id.toString());
-    
-    // Return success response with albums data
+
+    // Return success response with data of the albums
     res.status(200).json({
       status: 'success',
       results: albums.length,
@@ -102,8 +103,8 @@ export const getMyAlbums = async (req: Request, res: Response, next: NextFunctio
         albums
       }
     });
-  } catch (error) {
-    next(error);
+  } catch (err: unknown) {
+    next(err);
   }
 };
 
@@ -115,34 +116,34 @@ export const getMyAlbums = async (req: Request, res: Response, next: NextFunctio
  */
 export const updateAlbum = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Validate request body against the update album schema
+    // Validate a request body against the update album schema
     const validatedData = updateAlbumSchema.parse(req.body);
-    
+
     // Update the album using the album service
     const album = await albumService.updateAlbum(
       req.params.id,
       validatedData,
       req.user!._id.toString()
     );
-    
-    // Return success response with updated album data
+
+    // Return success response with updated albums data
     res.status(200).json({
       status: 'success',
       data: {
         album
       }
     });
-  } catch (error) {
+  } catch (err: unknown) {
     // If it's a Zod validation error, format it nicely
-    if (error.name === 'ZodError') {
+    if (isZodError(err)) {
       return next(createHttpError(400, {
         message: 'Validation error',
-        errors: error.errors
+        errors: err.errors
       }));
     }
-    
+
     // Pass other errors to the error handler middleware
-    next(error);
+    next(err);
   }
 };
 
@@ -157,13 +158,13 @@ export const deleteAlbum = async (req: Request, res: Response, next: NextFunctio
   try {
     // Delete the album using the album service
     const result = await albumService.deleteAlbum(req.params.id, req.user!._id.toString());
-    
-    // Return success response with message
+
+    // Return success response with a message
     res.status(200).json({
       status: 'success',
       message: result.message
     });
-  } catch (error) {
-    next(error);
+  } catch (err: unknown) {
+    next(err);
   }
 };

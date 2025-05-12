@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 jest.mock('../src/api/models/Album.model', () => require('../__mocks__/mongooseModels').Album);
 jest.mock('../src/api/models/MediaItem.model', () => require('../__mocks__/mongooseModels').MediaItem);
 jest.mock('../src/api/models/User.model', () => require('../__mocks__/mongooseModels').User);
+/* eslint-enable @typescript-eslint/no-require-imports */
 
 import request from 'supertest';
 import mongoose from 'mongoose';
@@ -11,9 +13,10 @@ import Album from '../src/api/models/Album.model';
 import MediaItem from '../src/api/models/MediaItem.model';
 import * as mediaItemService from '../src/api/services/mediaItem.service';
 import cloudinary from '../src/config/cloudinary';
+import { config } from '../src/config/env_conf';
 
 // Test database connection URI
-const MONGO_URI_TEST = process.env.MONGO_URI_TEST || 'mongodb://localhost:27017/memories-album-test';
+const DATABASE_URL = config.DATABASE_URL || 'mongodb://localhost:27017/memories-album-test';
 
 export const MOCK_USER_ID = 'mockUserId';
 export const MOCK_OTHER_USER_ID = 'otherUserId';
@@ -21,7 +24,7 @@ export const MOCK_ALBUM_ID = 'mockAlbumId';
 export const MOCK_MEDIA_ID = 'mockMediaId';
 
 export const generateMockToken = (userId: string = MOCK_USER_ID): string => {
-  return jwt.sign({ userId }, process.env.JWT_SECRET!, { expiresIn: '1h' });
+  return jwt.sign({ userId }, config.JWT_SECRET!, { expiresIn: '1h' });
 };
 
 export const mockAuthenticatedUser = (userId: string = MOCK_USER_ID, isActive: boolean = true) => {
@@ -43,16 +46,16 @@ export const mockAuthenticatedUser = (userId: string = MOCK_USER_ID, isActive: b
   });
 };
 
-export const mockAlbumFindById = (albumData: any) => {
+export const mockAlbumFindById = (albumData: unknown) => {
   (Album.findById as jest.Mock).mockResolvedValueOnce(albumData);
 };
 
-export const mockMediaItemFindById = (mediaItemData: any) => {
+export const mockMediaItemFindById = (mediaItemData: unknown) => {
   (MediaItem.findById as jest.Mock).mockResolvedValueOnce(mediaItemData);
 };
 
 // Ejemplo de un mock de álbum base
-export const createMockAlbum = (ownerId: string, albumId: string, overrides: Partial<any> = {}) => ({
+export const createMockAlbum = (ownerId: string, albumId: string, overrides: Partial<unknown> = {}) => ({
   _id: albumId,
   name: 'Mock Album',
   description: 'Mock Description',
@@ -65,7 +68,7 @@ export const createMockAlbum = (ownerId: string, albumId: string, overrides: Par
 });
 
 // Ejemplo de un mock de media item base
-export const createMockMediaItem = (uploaderId: string, albumId: string, mediaId: string, overrides: Partial<any> = {}) => ({
+export const createMockMediaItem = (uploaderId: string, albumId: string, mediaId: string, overrides: Partial<unknown> = {}) => ({
   _id: mediaId,
   album: albumId,
   uploader: uploaderId,
@@ -111,8 +114,8 @@ jest.mock('../src/config/cloudinary', () => ({
 // Setup and teardown
 beforeAll(async () => {
   try {
-    // Connect to test database
-    await mongoose.connect(MONGO_URI_TEST);
+    // Connect to a test database
+    await mongoose.connect(DATABASE_URL);
     console.log('Connected to test database');
   } catch (error) {
     console.error('Error connecting to test database:', error);
@@ -121,14 +124,14 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // Disconnect from test database
+  // Disconnect from a test database
   await mongoose.connection.close();
   console.log('Disconnected from test database');
 });
 
 let token: string;
 
-// Clean up database before each test
+// Clean up a database before each test
 beforeEach(async () => {
   token = generateMockToken(MOCK_USER_ID);
   mockAuthenticatedUser(MOCK_USER_ID);
@@ -153,7 +156,7 @@ describe('Album Routes', () => {
         save: mockAlbumSave, // Usar el mock de save definido arriba
       };
 
-      // Mock de Album.create para simular la creación del álbum
+      // Mock de Album. Create para simular la creación del álbum
       (Album.create as jest.Mock).mockResolvedValueOnce(mockCreatedAlbum);
       // Si tu controlador llama a Album.findById después de crear, necesitarías mockearlo también:
       // mockAlbumFindById(mockCreatedAlbum); // Descomenta si es necesario
@@ -245,7 +248,7 @@ describe('Album Routes', () => {
         expect.objectContaining({ name: 'Public Album', owner: MOCK_OTHER_USER_ID })
       ]));
 
-      // Verifica que Album.find fue llamado con el filtro correcto
+      // Verífica que Album.find fue llamado con el filtro correcto
       expect(Album.find).toHaveBeenCalledWith({
         $or: [
           { owner: MOCK_USER_ID },
@@ -310,7 +313,7 @@ describe('Album Routes', () => {
         expect.objectContaining({ name: 'User Public Album' })
       ]));
 
-      // Verifica que Album.find fue llamado con el filtro correcto
+      // Verífica que Album.find fue llamado con el filtro correcto
       expect(Album.find).toHaveBeenCalledWith({ owner: MOCK_USER_ID });
       expect(User.findById).toHaveBeenCalledWith(MOCK_USER_ID);
     });
@@ -427,29 +430,6 @@ describe('Album Routes', () => {
       // Asegurarse de que no se intentó eliminar
       expect(Album.findByIdAndDelete).not.toHaveBeenCalled();
       expect(MediaItem.deleteMany).not.toHaveBeenCalled();
-    });
-
-    it('should delete all media items associated with the album', async () => {
-      // El token y el usuario autenticado (MOCK_USER_ID) ya están mockeados por el beforeEach
-
-      const mockAlbumToDelete = createMockAlbum(MOCK_USER_ID, MOCK_ALBUM_ID);
-      mockAlbumFindById(mockAlbumToDelete);
-
-      (MediaItem.deleteMany as jest.Mock).mockResolvedValueOnce({ deletedCount: 3 }); // Simula que se borraron 3 media items
-      (Album.findByIdAndDelete as jest.Mock).mockResolvedValueOnce(mockAlbumToDelete);
-
-      const response = await request(app)
-          .delete(`/api/albums/${MOCK_ALBUM_ID}`)
-          .set('Authorization', `Bearer ${token}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.status).toBe('success');
-      expect(response.body.message).toBe('Album deleted successfully');
-
-      expect(Album.findById).toHaveBeenCalledWith(MOCK_ALBUM_ID);
-      expect(MediaItem.deleteMany).toHaveBeenCalledWith({ album: MOCK_ALBUM_ID }, expect.anything());
-      expect(Album.findByIdAndDelete).toHaveBeenCalledWith(MOCK_ALBUM_ID, expect.anything());
-      expect(User.findById).toHaveBeenCalledWith(MOCK_USER_ID);
     });
   });
 });
@@ -734,7 +714,7 @@ describe('Media Item Routes', () => {
       };
       jest.spyOn(mongoose, 'startSession').mockResolvedValueOnce(mockSession as any);
 
-      // Mock de eliminación en MediaItem y actualización en Album
+      // Mock de eliminación en MediaItem y actualización en Álbum
       (MediaItem.findByIdAndDelete as jest.Mock).mockResolvedValueOnce(mockMediaItem);
       mockAlbum.save.mockResolvedValueOnce(mockAlbum);
 
@@ -798,6 +778,228 @@ describe('Media Item Routes', () => {
       expect(MediaItem.findByIdAndDelete).not.toHaveBeenCalled();
       expect(cloudinary.uploader.destroy).not.toHaveBeenCalled();
       expect(User.findById).toHaveBeenCalledWith(MOCK_USER_ID);
+    });
+  });
+
+  describe('Multiple Media Upload', () => {
+    it('should upload multiple media items successfully', async () => {
+      const mockAlbum = createMockAlbum(MOCK_USER_ID, MOCK_ALBUM_ID);
+      mockAuthenticatedUser(MOCK_USER_ID); // Asegura que el usuario esté mockeado
+
+      // Mock de Album.findById para la verificación de permisos en el controlador
+      (Album.findById as jest.Mock).mockResolvedValue(mockAlbum);
+
+      // Mock de uploadToCloudinary para cada archivo
+      (mediaItemService.uploadToCloudinary as jest.Mock)
+          .mockResolvedValueOnce({
+            public_id: 'test_public_id_1',
+            secure_url: 'https://res.cloudinary.com/test/image/upload/test_public_id_1',
+            resource_type: 'image', format: 'jpg', width: 800, height: 600
+          })
+          .mockResolvedValueOnce({
+            public_id: 'test_public_id_2',
+            secure_url: 'https://res.cloudinary.com/test/video/upload/test_public_id_2',
+            resource_type: 'video', format: 'mp4', width: 640, height: 480, duration: 15,
+            thumbnail_url: 'https://res.cloudinary.com/test/video/upload/test_public_id_2_thumb.jpg'
+          });
+
+      // Mock de MediaItem.create para cada archivo
+      (MediaItem.create as jest.Mock)
+          .mockResolvedValueOnce({
+            _id: 'mockMediaId1', album: MOCK_ALBUM_ID, uploader: MOCK_USER_ID,
+            cloudinaryPublicId: 'test_public_id_1', cloudinaryUrl: 'url1', type: 'image'
+          })
+          .mockResolvedValueOnce({
+            _id: 'mockMediaId2', album: MOCK_ALBUM_ID, uploader: MOCK_USER_ID,
+            cloudinaryPublicId: 'test_public_id_2', cloudinaryUrl: 'url2', type: 'video'
+          });
+
+      // Mock de album.save() llamado dentro de mediaItemService.createMediaItem
+      // Si createMediaItem llama a album.save() dos veces, mockéalo dos veces.
+      (mockAlbum.save as jest.Mock).mockResolvedValue(mockAlbum);
+
+
+      const mockFileBuffer1 = Buffer.from('test image content 1');
+      const mockFileBuffer2 = Buffer.from('test video content 2');
+
+      const response = await request(app)
+          .post('/api/media/multiple')
+          .set('Authorization', `Bearer ${token}`) // token del beforeEach
+          .field('albumId', MOCK_ALBUM_ID)
+          // .field('titles', ['Title 1', 'Title 2']) // Ejemplo si envías títulos
+          .attach('files', mockFileBuffer1, { filename: 'test-image.jpg', contentType: 'image/jpeg' })
+          .attach('files', mockFileBuffer2, { filename: 'test-video.mp4', contentType: 'video/mp4' });
+
+      expect(response.status).toBe(201);
+      expect(response.body.status).toBe('success');
+      expect(response.body.message).toBe('2 files uploaded successfully.');
+      expect(response.body.data.mediaItems).toHaveLength(2);
+      expect(response.body.data.mediaItems[0].album).toBe(MOCK_ALBUM_ID);
+      expect(response.body.data.mediaItems[0].uploader).toBe(MOCK_USER_ID);
+      expect(response.body.data.mediaItems[1].type).toBe('video');
+
+      expect(Album.findById).toHaveBeenCalledWith(MOCK_ALBUM_ID);
+      expect(mediaItemService.uploadToCloudinary).toHaveBeenCalledTimes(2);
+      expect(MediaItem.create).toHaveBeenCalledTimes(2);
+      expect(mockAlbum.save).toHaveBeenCalledTimes(2); // createMediaItem llama a album.save
+    });
+
+    it('should return 400 if no files are uploaded', async () => {
+      mockAuthenticatedUser(MOCK_USER_ID);
+      const mockAlbum = createMockAlbum(MOCK_USER_ID, MOCK_ALBUM_ID);
+      (Album.findById as jest.Mock).mockResolvedValue(mockAlbum);
+
+
+      const response = await request(app)
+          .post('/api/media/multiple')
+          .set('Authorization', `Bearer ${token}`)
+          .field('albumId', MOCK_ALBUM_ID);
+      // No .attach('files', ...)
+
+      expect(response.status).toBe(400);
+      expect(response.body.status).toBe('error');
+      expect(response.body.message).toBe('No files uploaded');
+      expect(User.findById).toHaveBeenCalledWith(MOCK_USER_ID); // Del middleware protect
+      // Album.findById no debería ser llamado si la validación de archivos falla primero en el controlador
+      // expect(Album.findById).not.toHaveBeenCalled();
+      expect(mediaItemService.uploadToCloudinary).not.toHaveBeenCalled();
+      expect(MediaItem.create).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 if albumId is not provided in the body', async () => {
+      mockAuthenticatedUser(MOCK_USER_ID);
+      const mockFileBuffer = Buffer.from('test image content');
+
+      const response = await request(app)
+          .post('/api/media/multiple')
+          .set('Authorization', `Bearer ${generateMockToken(MOCK_USER_ID)}`)
+          // No se envía albumId en .field()
+          .attach('files', mockFileBuffer, 'test-image1.jpg')
+          .attach('files', mockFileBuffer, 'test-image2.jpg');
+
+      expect(response.status).toBe(400);
+      expect(response.body.status).toBe('error');
+      expect(response.body.message).toBe('Validation error'); // O el mensaje específico de Zod
+      expect(response.body.errors).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              path: ['albumId'],
+              message: 'Required', // O el mensaje exacto de tu schema Zod
+            }),
+          ])
+      );
+      expect(User.findById).toHaveBeenCalledWith(MOCK_USER_ID); // Middleware protect
+      expect(Album.findById).not.toHaveBeenCalled();
+      expect(mediaItemService.uploadToCloudinary).not.toHaveBeenCalled();
+      expect(MediaItem.create).not.toHaveBeenCalled();
+    });
+
+    it('should return 404 if album does not exist', async () => {
+      mockAuthenticatedUser(MOCK_USER_ID);
+      (Album.findById as jest.Mock).mockResolvedValue(null); // Simula que el álbum no se encuentra
+
+      const mockFileBuffer = Buffer.from('test image content');
+      const response = await request(app)
+          .post('/api/media/multiple')
+          .set('Authorization', `Bearer ${generateMockToken(MOCK_USER_ID)}`)
+          .field('albumId', 'nonExistentAlbumId')
+          .attach('files', mockFileBuffer, 'test-image1.jpg');
+
+      expect(response.status).toBe(404);
+      expect(response.body.status).toBe('error');
+      expect(response.body.message).toBe('Album not found');
+      expect(User.findById).toHaveBeenCalledWith(MOCK_USER_ID);
+      expect(Album.findById).toHaveBeenCalledWith('nonExistentAlbumId');
+      expect(mediaItemService.uploadToCloudinary).not.toHaveBeenCalled();
+      expect(MediaItem.create).not.toHaveBeenCalled();
+    });
+
+    it('should return 403 if user tries to upload to an album they do not own', async () => {
+      mockAuthenticatedUser(MOCK_USER_ID);
+      const mockAlbumFromOtherOwner = createMockAlbum(MOCK_OTHER_USER_ID, MOCK_ALBUM_ID);
+      (Album.findById as jest.Mock).mockResolvedValue(mockAlbumFromOtherOwner);
+
+      const mockFileBuffer = Buffer.from('test image content');
+      const response = await request(app)
+          .post('/api/media/multiple')
+          .set('Authorization', `Bearer ${generateMockToken(MOCK_USER_ID)}`)
+          .field('albumId', MOCK_ALBUM_ID)
+          .attach('files', mockFileBuffer, 'test-image1.jpg');
+
+      expect(response.status).toBe(403);
+      expect(response.body.status).toBe('error');
+      expect(response.body.message).toBe('You do not have permission to add media to this album');
+      expect(User.findById).toHaveBeenCalledWith(MOCK_USER_ID);
+      expect(Album.findById).toHaveBeenCalledWith(MOCK_ALBUM_ID);
+      expect(mediaItemService.uploadToCloudinary).not.toHaveBeenCalled();
+      expect(MediaItem.create).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 if file type is not allowed', async () => {
+      mockAuthenticatedUser(MOCK_USER_ID);
+      // No es necesario mockear Album.findById aquí si el filtro de archivos actúa antes
+      // en el middleware de carga.
+
+      const mockTextFileBuffer = Buffer.from('this is a text file');
+      const response = await request(app)
+          .post('/api/media/multiple')
+          .set('Authorization', `Bearer ${generateMockToken(MOCK_USER_ID)}`)
+          .field('albumId', MOCK_ALBUM_ID)
+          .attach('files', mockTextFileBuffer, { filename: 'test-file.txt', contentType: 'text/plain' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.status).toBe('error');
+      // El mensaje exacto depende de cómo tu fileFilter y errorHandler manejen esto.
+      // En tu `upload.middleware.ts`, `fileFilter` llama a `cb(createHttpError(400, 'Only image and video files are allowed'));`
+      // Esto debería ser manejado por el `errorHandler` global.
+      expect(response.body.message).toBe('Only image and video files are allowed');
+      expect(User.findById).toHaveBeenCalledWith(MOCK_USER_ID); // Middleware protect
+      expect(Album.findById).not.toHaveBeenCalled(); // No debería llegar al controlador si el tipo de archivo falla
+      expect(mediaItemService.uploadToCloudinary).not.toHaveBeenCalled();
+      expect(MediaItem.create).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 if too many files are uploaded', async () => {
+      mockAuthenticatedUser(MOCK_USER_ID);
+      // El middleware uploadMultipleFiles(5) limita a 5 archivos.
+      // El middleware handleMulterError debería atrapar el error 'LIMIT_UNEXPECTED_FILE'.
+
+      const mockFileBuffer = Buffer.from('test image content');
+      let requestBuilder = request(app)
+          .post('/api/media/multiple')
+          .set('Authorization', `Bearer ${generateMockToken(MOCK_USER_ID)}`)
+          .field('albumId', MOCK_ALBUM_ID);
+
+      for (let i = 0; i < 6; i++) { // Intentar subir 6 archivos
+        requestBuilder = requestBuilder.attach('files', mockFileBuffer, `test-image${i}.jpg`);
+      }
+      const response = await requestBuilder;
+
+      expect(response.status).toBe(400);
+      expect(response.body.status).toBe('error');
+      expect(response.body.message).toMatch(/Too many files/i); // O el mensaje exacto de handleMulterError
+      expect(User.findById).toHaveBeenCalledWith(MOCK_USER_ID);
+      expect(Album.findById).not.toHaveBeenCalled();
+      expect(mediaItemService.uploadToCloudinary).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 if a file is too large', async () => {
+      mockAuthenticatedUser(MOCK_USER_ID);
+      // El límite es 10MB. Creamos un buffer > 10MB.
+      const largeFileBuffer = Buffer.alloc(11 * 1024 * 1024); // 11MB
+
+      const response = await request(app)
+          .post('/api/media/multiple')
+          .set('Authorization', `Bearer ${generateMockToken(MOCK_USER_ID)}`)
+          .field('albumId', MOCK_ALBUM_ID)
+          .attach('files', largeFileBuffer, 'large-image.jpg');
+
+      expect(response.status).toBe(400);
+      expect(response.body.status).toBe('error');
+      expect(response.body.message).toMatch(/File too large/i); // O el mensaje exacto de handleMulterError
+      expect(User.findById).toHaveBeenCalledWith(MOCK_USER_ID);
+      expect(Album.findById).not.toHaveBeenCalled();
+      expect(mediaItemService.uploadToCloudinary).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,4 +1,6 @@
 import mongoose from 'mongoose';
+import { config } from './env_conf';
+import logger from './logging_conf';
 
 /**
  * Establishes a connection to MongoDB using the provided URI from environment variables.
@@ -6,18 +8,18 @@ import mongoose from 'mongoose';
  */
 export const connectDB = async (): Promise<void> => {
   try {
-    const mongoURI = process.env.MONGO_URI;
+    const mongoURI = config.DATABASE_URL;
     
     if (!mongoURI) {
-      throw new Error('MongoDB connection string (MONGO_URI) is not defined in environment variables');
+      logger.error('MongoDB connection string (DATABASE_URL) is not defined in environment variables');
     }
     
     // Connect to MongoDB
     const conn = await mongoose.connect(mongoURI);
-    
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+
+    logger.info(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
-    console.error(`Error connecting to MongoDB: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    logger.error(`Error connecting to MongoDB: ${error instanceof Error ? error.message : 'Unknown error'}`);
     // Exit process with failure
     process.exit(1);
   }

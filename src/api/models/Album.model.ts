@@ -17,7 +17,7 @@ export interface IAlbum extends Document {
 
 /**
  * Mongoose schema for Album
- * Defines fields, validations, and relationships
+ * Defines fields, validations and relationships
  */
 const albumSchema = new Schema<IAlbum>(
   {
@@ -34,7 +34,7 @@ const albumSchema = new Schema<IAlbum>(
       trim: true,
     },
     
-    // Owner: required reference to User model
+    // Owner: required reference to a User model
     owner: {
       type: Schema.Types.ObjectId,
       ref: 'User',
@@ -53,7 +53,7 @@ const albumSchema = new Schema<IAlbum>(
       default: [], // Default to empty array
     }],
     
-    // Public flag: boolean, defaults to false
+    // A public flag: boolean, defaults to false
     isPublic: {
       type: Boolean,
       required: true,

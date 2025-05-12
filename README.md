@@ -38,7 +38,7 @@ Crea un archivo `.env` en la raíz del proyecto con el siguiente contenido:
 PORT=3001
 
 # Conexión a MongoDB
-MONGO_URI=tu_mongodb_connection_string
+DATABASE_URL=tu_mongodb_connection_string
 
 # JWT para autenticación
 JWT_SECRET=tu_secreto_jwt_muy_seguro

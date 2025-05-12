@@ -2,11 +2,13 @@ import createHttpError from 'http-errors';
 import cloudinary from '../../config/cloudinary';
 import MediaItem, { IMediaItem } from '../models/MediaItem.model';
 import Album from '../models/Album.model';
-import { CreateMediaItemInput, UpdateMediaItemInput } from '../validators/mediaItem.validator';
+import { CreateMediaItemInput, UpdateMediaItemInput, fileUploadSchema } from '../validators/mediaItem.validator';
 import mongoose from 'mongoose';
+import logger from '../../config/logging_conf';
+import { handleServiceError } from '../utils/serviceErrorHandler';
 
 /**
- * Interface for file upload result from Cloudinary
+ * Interface for file upload results from Cloudinary
  */
 interface CloudinaryUploadResult {
   public_id: string;
@@ -23,7 +25,7 @@ interface CloudinaryUploadResult {
  * Uploads a file to Cloudinary
  * @param file - File buffer and metadata
  * @param folder - Cloudinary folder to upload to
- * @returns Cloudinary upload result
+ * @returns Cloudinary upload result.
  */
 export const uploadToCloudinary = async (
   file: Express.Multer.File,
@@ -33,7 +35,7 @@ export const uploadToCloudinary = async (
     // Convert file buffer to base64 string
     const fileBase64 = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
     
-    // Determine resource type based on mimetype
+    // Determine a resource type based on mimetype
     const resourceType = file.mimetype.startsWith('image/') ? 'image' : 'video';
     
     // Upload to Cloudinary
@@ -59,8 +61,8 @@ export const uploadToCloudinary = async (
         ? result.eager[0].secure_url 
         : undefined
     };
-  } catch (error) {
-    console.error('Error uploading to Cloudinary:', error);
+  } catch (err) {
+    logger.error('Error uploading to Cloudinary:', err);
     throw createHttpError(500, 'Failed to upload file to Cloudinary');
   }
 };
@@ -69,7 +71,7 @@ export const uploadToCloudinary = async (
  * Creates a new media item
  * @param mediaData - Media item data
  * @param userId - ID of the authenticated user
- * @returns The created media item
+ * @returns The created media item.
  */
 export const createMediaItem = async (
   mediaData: CreateMediaItemInput,
@@ -77,6 +79,9 @@ export const createMediaItem = async (
 ): Promise<IMediaItem> => {
   try {
     const { albumId, ...restData } = mediaData;
+
+    // Validate albumId
+    fileUploadSchema.parse({ albumId });
     
     // Check if album exists and user has access
     const album = await Album.findById(albumId);
@@ -84,12 +89,12 @@ export const createMediaItem = async (
       throw createHttpError(404, 'Album not found');
     }
     
-    // Check if user is the owner of the album
+    // Check if the user is the owner of the album
     if (album.owner.toString() !== userId) {
       throw createHttpError(403, 'You do not have permission to add media to this album');
     }
     
-    // Create new media item
+    // Create a new media item
     const mediaItem = await MediaItem.create({
       ...restData,
       uploader: userId,
@@ -97,44 +102,45 @@ export const createMediaItem = async (
     });
     
     // Add media item to album
-    album.mediaItems.push(mediaItem._id);
+    album.mediaItems.push(mediaItem._id as mongoose.Types.ObjectId);
     await album.save();
     
     return mediaItem;
-  } catch (error) {
+  } catch (err) {
     // Handle potential errors
-    if (error instanceof mongoose.Error.ValidationError) {
-      throw createHttpError(400, 'Invalid media item data');
-    }
-    throw error;
+    handleServiceError(err, 'createMediaItem');
+    throw err;
   }
 };
 
 /**
- * Gets all media items in an album
+ * Gets all media items on an album
  * Ensures the user has access to the album (owner or public)
  * @param albumId - ID of the album
  * @param userId - ID of the authenticated user
- * @returns Array of media items
+ * @returns Array of media items.
  */
 export const getMediaItemsByAlbum = async (
   albumId: string,
   userId: string
 ): Promise<IMediaItem[]> => {
+  // Validate albumId
+  fileUploadSchema.parse({ albumId });
+
   // Check if album exists and user has access
   const album = await Album.findById(albumId);
   if (!album) {
     throw createHttpError(404, 'Album not found');
   }
   
-  // Check if user has access to the album
+  // Check if the user has access to the album
   if (!album.isPublic && album.owner.toString() !== userId) {
     throw createHttpError(403, 'You do not have permission to access this album');
   }
   
-  // Find media items in the album
+  // Find media items on the album
   const mediaItems = await MediaItem.find({ album: albumId }).sort({ createdAt: -1 });
-  
+
   return mediaItems;
 };
 
@@ -143,7 +149,7 @@ export const getMediaItemsByAlbum = async (
  * Ensures the user has access to the album containing the media item
  * @param mediaItemId - ID of the media item
  * @param userId - ID of the authenticated user
- * @returns The media item if found and accessible
+ * @returns The media item if found and accessible.
  */
 export const getMediaItemById = async (
   mediaItemId: string,
@@ -153,29 +159,30 @@ export const getMediaItemById = async (
     // Find media item by ID
     const mediaItem = await MediaItem.findById(mediaItemId);
     
-    // Check if media item exists
+    // Check if a media item exists
     if (!mediaItem) {
       throw createHttpError(404, 'Media item not found');
     }
+
+    // Validate albumId
+    fileUploadSchema.parse({ albumId: mediaItem.album });
     
-    // Check if album exists
+    // Check if the album exists
     const album = await Album.findById(mediaItem.album);
     if (!album) {
       throw createHttpError(404, 'Album not found');
     }
     
-    // Check if user has access to the album
+    // Check if the user has access to the album
     if (!album.isPublic && album.owner.toString() !== userId) {
       throw createHttpError(403, 'You do not have permission to access this media item');
     }
     
     return mediaItem;
-  } catch (error) {
+  } catch (err) {
     // Handle potential errors
-    if (error instanceof mongoose.Error.CastError) {
-      throw createHttpError(400, 'Invalid media item ID');
-    }
-    throw error;
+    handleServiceError(err, 'getMediaItemById');
+    throw err;
   }
 };
 
@@ -185,7 +192,7 @@ export const getMediaItemById = async (
  * @param mediaItemId - ID of the media item to update
  * @param updateData - Media item data to update
  * @param userId - ID of the authenticated user
- * @returns The updated media item
+ * @returns The updated media item.
  */
 export const updateMediaItem = async (
   mediaItemId: string,
@@ -196,12 +203,12 @@ export const updateMediaItem = async (
     // Find media item by ID
     const mediaItem = await MediaItem.findById(mediaItemId);
     
-    // Check if media item exists
+    // Check if a media item exists
     if (!mediaItem) {
       throw createHttpError(404, 'Media item not found');
     }
     
-    // Check if user is the uploader of the media item
+    // Check if the user is the uploader of the media item.
     if (mediaItem.uploader.toString() !== userId) {
       throw createHttpError(403, 'You do not have permission to update this media item');
     }
@@ -211,15 +218,10 @@ export const updateMediaItem = async (
     await mediaItem.save();
     
     return mediaItem;
-  } catch (error) {
+  } catch (err) {
     // Handle potential errors
-    if (error instanceof mongoose.Error.CastError) {
-      throw createHttpError(400, 'Invalid media item ID');
-    }
-    if (error instanceof mongoose.Error.ValidationError) {
-      throw createHttpError(400, 'Invalid media item data');
-    }
-    throw error;
+    handleServiceError(err, 'updateMediaItem');
+    throw err;
   }
 };
 
@@ -229,7 +231,7 @@ export const updateMediaItem = async (
  * Also deletes the file from Cloudinary
  * @param mediaItemId - ID of the media item to delete
  * @param userId - ID of the authenticated user
- * @returns Success message
+ * @returns Success message.
  */
 export const deleteMediaItem = async (
   mediaItemId: string,
@@ -239,10 +241,12 @@ export const deleteMediaItem = async (
     // Find media item by ID
     const mediaItem = await MediaItem.findById(mediaItemId);
     
-    // Check if media item exists
+    // Check if a media item exists
     if (!mediaItem) {
       throw createHttpError(404, 'Media item not found');
     }
+
+    fileUploadSchema.parse({ albumId: mediaItem.album });
     
     // Find the album
     const album = await Album.findById(mediaItem.album);
@@ -250,7 +254,7 @@ export const deleteMediaItem = async (
       throw createHttpError(404, 'Album not found');
     }
     
-    // Check if user is the uploader of the media item or the owner of the album
+    // Check if the user is the uploader of the media item or the owner of the album.
     const isUploader = mediaItem.uploader.toString() === userId;
     const isAlbumOwner = album.owner.toString() === userId;
     
@@ -268,7 +272,7 @@ export const deleteMediaItem = async (
       
       // Remove the media item from the album
       album.mediaItems = album.mediaItems.filter(
-        id => id.toString() !== mediaItemId
+        id => id.toString() !== mediaItem._id
       );
       await album.save({ session });
       
@@ -280,17 +284,15 @@ export const deleteMediaItem = async (
       await cloudinary.uploader.destroy(mediaItem.cloudinaryPublicId);
       
       return { message: 'Media item deleted successfully' };
-    } catch (error) {
+    } catch (err) {
       // Abort the transaction on error
       await session.abortTransaction();
       session.endSession();
-      throw error;
+      throw err;
     }
-  } catch (error) {
+  } catch (err) {
     // Handle potential errors
-    if (error instanceof mongoose.Error.CastError) {
-      throw createHttpError(400, 'Invalid media item ID');
-    }
-    throw error;
+    handleServiceError(err, 'deleteMediaItem');
+    throw err;
   }
 };

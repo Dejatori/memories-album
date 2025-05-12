@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import logger from '../config/logging_conf';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -8,7 +9,7 @@ const LoginPage: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // In a real application, this would call an authentication service
-    console.log('Login attempt with:', { email, password });
+    logger.info('Login attempt with:', { email, password });
     alert('Login functionality will be implemented in the future');
   };
 

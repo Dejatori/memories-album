@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { protect } from '../middlewares/auth.middleware';
-import { uploadSingleFile, handleMulterError } from '../middlewares/upload.middleware';
+import {protect, requireAuth} from '../middlewares/auth.middleware';
+import { uploadSingleFile, uploadMultipleFiles, handleMulterError } from '../middlewares/upload.middleware';
 import {
   uploadMedia,
+  uploadMultipleMedia,
   getMediaItemById,
   updateMediaItem,
   deleteMediaItem
@@ -13,6 +14,7 @@ const router = Router();
 
 // Protect all routes
 router.use(protect);
+router.use(requireAuth);
 
 /**
  * @route POST /api/media
@@ -20,6 +22,13 @@ router.use(protect);
  * @access Private
  */
 router.post('/', uploadSingleFile, handleMulterError, uploadMedia);
+
+/**
+ * @route POST /api/media/multiple
+ * @desc Upload multiple files to Cloudinary and create media items
+ * @access Private
+ */
+router.post('/multiple', uploadMultipleFiles(5), handleMulterError, uploadMultipleMedia);
 
 /**
  * @route GET /api/media/:id
